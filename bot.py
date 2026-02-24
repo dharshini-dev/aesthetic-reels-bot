@@ -72,7 +72,6 @@ except: pass
 # ==========================================
 raw_clip = VideoFileClip(raw_path)
 
-# Limit maximum duration to 5.5 seconds for the viral loop effect
 final_duration = min(5.5, raw_clip.duration - 0.5) 
 
 bg = raw_clip.subclip(0, final_duration).resize(height=1920).crop(x_center=540, width=1080)
@@ -82,7 +81,6 @@ final_bg = CompositeVideoClip([bg, overlay]).fadein(0.5).fadeout(0.5)
 
 font_p = "static/Montserrat-Medium.ttf" 
 
-# Text stays for just enough time to read once, forcing a re-watch
 txt = TextClip(todays_quote['quote'], fontsize=35, color='white', font=font_p, method='caption', size=(850, None), align='West', interline=12)
 txt = txt.set_start(0.5).set_duration(final_duration - 1.0).fadein(0.5).fadeout(0.5).set_position(('center', 750))
 
@@ -91,13 +89,24 @@ watermark = watermark.set_duration(final_duration).set_position(('center', 250))
 
 final_vid = CompositeVideoClip([final_bg, txt, watermark])
 
+# ==========================================
+# 🎵 SECURE LOCAL AUDIO INTEGRATION
+# ==========================================
+music_path = "bgm.mp3" # Make sure this file is uploaded to your GitHub repo!
+
 if os.path.exists(music_path):
+    print("🎵 Audio found! Syncing with video...")
     try:
         audio = AudioFileClip(music_path).set_duration(final_duration).audio_fadeout(0.5)
         final_vid = final_vid.set_audio(audio)
-    except: pass
+    except Exception as e:
+        print(f"⚠️ Error processing audio: {e}")
+else:
+    print("⚠️ bgm.mp3 is MISSING in your folder! Rendering silent video.")
 
 # ==========================================
+# 5. FAST RENDER & SEND
+# ====================================================================================
 # 5. FAST RENDER & SEND
 # ==========================================
 out_path = f"final_reels/{short_name}.mp4"
