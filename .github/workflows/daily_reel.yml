@@ -1,0 +1,24 @@
+name: Daily Reel Generator
+on:
+  schedule:
+    - cron: '0 10 * * *' 
+  workflow_dispatch:
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+      - name: Install Tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y imagemagick
+          pip install requests moviepy
+      - name: Run Script
+        env:
+          PEXELS_API_KEY: ${{ secrets.PEXELS_API_KEY }}
+          TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
+          CHAT_ID: ${{ secrets.CHAT_ID }}
+        run: python bot.py
