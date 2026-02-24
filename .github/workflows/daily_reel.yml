@@ -3,11 +3,10 @@ name: Daily Reel Generator
 on:
   workflow_dispatch: 
   schedule:
-    # Runs at 03:00 UTC (8:30 AM IST) - Video ready for 9 AM upload
-    - cron: '0 3 * * *'
-    # Runs at 12:00 UTC (5:30 PM IST) - Video ready for 6 PM upload
-    - cron: '0 12 * * *'
-
+    # Runs at 02:00 UTC (7:30 AM IST) - For Morning 8:00 AM PEAK upload
+    - cron: '0 2 * * *'
+    # Runs at 15:00 UTC (8:30 PM IST) - For Night 9:00 PM PEAK upload
+    - cron: '0 15 * * *'
 jobs:
   build:
     runs-on: ubuntu-latest
