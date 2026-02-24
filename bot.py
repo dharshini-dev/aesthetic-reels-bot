@@ -5,7 +5,7 @@ import json, random, os
 from datetime import datetime
 
 # ==========================================
-# 1. SETUP & OPTIMIZATION
+# 1. SETUP
 # ==========================================
 if os.environ.get('GITHUB_ACTIONS'):
     pass 
@@ -24,28 +24,31 @@ unique_id = datetime.now().strftime("%y%m%d_%H%M%S")
 short_name = f"reel_{unique_id}"
 
 # ==========================================
-# 2. DATA LOAD 
+# 2. LOAD DATA
 # ==========================================
 with open('quotes.json', 'r', encoding='utf-8') as f:
     todays_quote = random.choice(json.load(f))
     full_keyword = todays_quote['background_keyword']
 
 # ==========================================
-# 3. REFINED AESTHETIC SEARCH (NATURE/LONELY)
+# 3. HIGH QUALITY VIDEO FETCH
 # ==========================================
 headers = {"Authorization": PEXELS_API_KEY}
-# Query updated to include minimalist and nature vibes specifically
 search_query = f"{full_keyword} aesthetic nature minimalist lonely"
 v_url = f"https://api.pexels.com/videos/search?query={search_query}&orientation=portrait&per_page=15"
 
 v_data = requests.get(v_url, headers=headers).json()['videos']
-video_link = random.choice(v_data)['video_files'][0]['link']
+selected_video = random.choice(v_data)
+
+# Picking the highest resolution file
+video_files = selected_video['video_files']
+video_link = sorted(video_files, key=lambda x: x['width'], reverse=True)[0]['link']
 
 raw_path = f"raw_footage/{short_name}.mp4"
 with open(raw_path, 'wb') as f:
     f.write(requests.get(video_link).content)
 
-# Audio fallback
+# Audio
 music_path = f"temp_audio/{short_name}.mp3"
 stable_audio_url = "https://www.bensound.com/bensound-music/bensound-dreams.mp3"
 try:
@@ -54,22 +57,32 @@ try:
 except: pass
 
 # ==========================================
-# 4. EDITING (0.5s FADES + MINIMAL FONT)
+# 4. EDITING (HD + LEFT-ALIGNED CENTER TEXT)
 # ==========================================
 duration = 8.0
 bg = VideoFileClip(raw_path).subclip(0, duration).resize(height=1920).crop(x_center=540, width=1080)
-overlay = ColorClip(size=(1080, 1920), color=(0,0,0)).set_opacity(0.75).set_duration(duration)
+overlay = ColorClip(size=(1080, 1920), color=(0,0,0)).set_opacity(0.70).set_duration(duration)
 
-# Video Fade: 0.5s In and Out for smooth loop
+# 0.5s Video Fades
 final_bg = CompositeVideoClip([bg, overlay]).fadein(0.5).fadeout(0.5)
 
 font_p = "static/Montserrat-Medium.ttf" 
 
-txt = TextClip(todays_quote['quote'], fontsize=32, color='white', font=font_p, method='caption', size=(800, None), align='West', interline=10)
-txt = txt.set_start(0.5).set_duration(7).fadein(0.5).fadeout(0.5).set_position(('center', 800))
+# align='West' ensures multi-line text starts straight from the left
+txt = TextClip(todays_quote['quote'], 
+               fontsize=35, 
+               color='white', 
+               font=font_p, 
+               method='caption', 
+               size=(850, None), 
+               align='West', 
+               interline=12)
 
-watermark = TextClip("@shiinnnnni", fontsize=20, color='#CCCCCC', font='Arial', method='caption', size=(800, None), align='center')
-watermark = watermark.set_duration(duration).set_position(('center', 200)).set_opacity(0.5)
+# Position set to center horizontally, 750px from top
+txt = txt.set_start(0.5).set_duration(7).fadein(0.5).fadeout(0.5).set_position(('center', 750))
+
+watermark = TextClip("@shiinnnnni", fontsize=22, color='#FFFFFF', font='Arial', method='caption', size=(800, None), align='center')
+watermark = watermark.set_duration(duration).set_position(('center', 250)).set_opacity(0.4)
 
 final_vid = CompositeVideoClip([final_bg, txt, watermark])
 
@@ -80,7 +93,7 @@ if os.path.exists(music_path):
     except: pass
 
 # ==========================================
-# 5. FAST RENDER & SEND
+# 5. RENDER & SEND
 # ==========================================
 out_path = f"final_reels/{short_name}.mp4"
 final_vid.write_videofile(out_path, fps=24, codec="libx264", audio_codec="aac", preset='ultrafast', threads=4)
@@ -90,4 +103,4 @@ payload = {'chat_id': CHAT_ID, 'caption': todays_quote['caption']}
 with open(out_path, 'rb') as video_file:
     requests.post(telegram_url, data=payload, files={'video': video_file})
 
-print(f"🚀 Aesthetic Minimalist Reel Sent! Theme: {full_keyword}")
+print(f"✅ HD Aesthetic Reel Sent! Quality: {selected_video['width']}x{selected_video['height']}")
