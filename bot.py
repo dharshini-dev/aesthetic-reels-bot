@@ -77,3 +77,12 @@ payload = {'chat_id': CHAT_ID, 'caption': todays_quote['caption']}
 with open(out_path, 'rb') as video_file:
     requests.post(telegram_url, data=payload, files={'video': video_file})
 print("✅ Done!")
+# Intha block-ai bot.py-oda kadasila replace pannunga
+print("🚀 Attempting to send video to Telegram...")
+telegram_url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendVideo"
+payload = {'chat_id': CHAT_ID, 'caption': todays_quote['caption']}
+
+with open(out_path, 'rb') as video_file:
+    r = requests.post(telegram_url, data=payload, files={'video': video_file})
+    print(f"📡 Telegram Response: {r.status_code}")
+    print(f"💬 Response Text: {r.text}")
