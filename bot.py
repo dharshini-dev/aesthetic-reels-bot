@@ -24,23 +24,23 @@ unique_id = datetime.now().strftime("%y%m%d_%H%M%S")
 short_name = f"reel_{unique_id}"
 
 # ==========================================
-# 2. LOAD DATA
+# 2. DATA LOAD
 # ==========================================
 with open('quotes.json', 'r', encoding='utf-8') as f:
     todays_quote = random.choice(json.load(f))
     full_keyword = todays_quote['background_keyword']
 
 # ==========================================
-# 3. HIGH QUALITY VIDEO FETCH
+# 3. SECURE VIDEO FETCH (Filter by Duration)
 # ==========================================
 headers = {"Authorization": PEXELS_API_KEY}
 search_query = f"{full_keyword} aesthetic nature minimalist lonely"
-v_url = f"https://api.pexels.com/videos/search?query={search_query}&orientation=portrait&per_page=15"
+# Added &min_duration=10 to ensure we get longer videos
+v_url = f"https://api.pexels.com/videos/search?query={search_query}&orientation=portrait&per_page=15&min_duration=10"
 
 v_data = requests.get(v_url, headers=headers).json()['videos']
 selected_video = random.choice(v_data)
 
-# Picking the highest resolution file
 video_files = selected_video['video_files']
 video_link = sorted(video_files, key=lambda x: x['width'], reverse=True)[0]['link']
 
@@ -57,43 +57,37 @@ try:
 except: pass
 
 # ==========================================
-# 4. EDITING (HD + LEFT-ALIGNED CENTER TEXT)
+# 4. DYNAMIC EDITING (Prevents Duration Error)
 # ==========================================
-duration = 8.0
-bg = VideoFileClip(raw_path).subclip(0, duration).resize(height=1920).crop(x_center=540, width=1080)
-overlay = ColorClip(size=(1080, 1920), color=(0,0,0)).set_opacity(0.70).set_duration(duration)
+raw_clip = VideoFileClip(raw_path)
 
-# 0.5s Video Fades
+# Safety check: If video is somehow still < 8s, use its actual duration
+final_duration = min(8.0, raw_clip.duration - 0.5) 
+
+bg = raw_clip.subclip(0, final_duration).resize(height=1920).crop(x_center=540, width=1080)
+overlay = ColorClip(size=(1080, 1920), color=(0,0,0)).set_opacity(0.70).set_duration(final_duration)
+
 final_bg = CompositeVideoClip([bg, overlay]).fadein(0.5).fadeout(0.5)
 
 font_p = "static/Montserrat-Medium.ttf" 
 
-# align='West' ensures multi-line text starts straight from the left
-txt = TextClip(todays_quote['quote'], 
-               fontsize=35, 
-               color='white', 
-               font=font_p, 
-               method='caption', 
-               size=(850, None), 
-               align='West', 
-               interline=12)
-
-# Position set to center horizontally, 750px from top
-txt = txt.set_start(0.5).set_duration(7).fadein(0.5).fadeout(0.5).set_position(('center', 750))
+# Text Timing adjusted to dynamic duration
+txt = TextClip(todays_quote['quote'], fontsize=35, color='white', font=font_p, method='caption', size=(850, None), align='West', interline=12)
+txt = txt.set_start(0.5).set_duration(final_duration - 1.0).fadein(0.5).fadeout(0.5).set_position(('center', 750))
 
 watermark = TextClip("@shiinnnnni", fontsize=22, color='#FFFFFF', font='Arial', method='caption', size=(800, None), align='center')
-watermark = watermark.set_duration(duration).set_position(('center', 250)).set_opacity(0.4)
+watermark = watermark.set_duration(final_duration).set_position(('center', 250)).set_opacity(0.4)
 
 final_vid = CompositeVideoClip([final_bg, txt, watermark])
 
 if os.path.exists(music_path):
     try:
-        audio = AudioFileClip(music_path).set_duration(duration).audio_fadeout(0.5)
+        audio = AudioFileClip(music_path).set_duration(final_duration).audio_fadeout(0.5)
         final_vid = final_vid.set_audio(audio)
     except: pass
 
 # ==========================================
-# 5. RENDER & SEND
+# 5. FAST RENDER & SEND
 # ==========================================
 out_path = f"final_reels/{short_name}.mp4"
 final_vid.write_videofile(out_path, fps=24, codec="libx264", audio_codec="aac", preset='ultrafast', threads=4)
@@ -103,4 +97,4 @@ payload = {'chat_id': CHAT_ID, 'caption': todays_quote['caption']}
 with open(out_path, 'rb') as video_file:
     requests.post(telegram_url, data=payload, files={'video': video_file})
 
-print(f"✅ HD Aesthetic Reel Sent! Quality: {selected_video['width']}x{selected_video['height']}")
+print(f"✅ HD Aesthetic Reel Sent! Final Duration: {final_duration}s")
