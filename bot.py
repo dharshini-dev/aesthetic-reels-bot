@@ -24,11 +24,22 @@ unique_id = datetime.now().strftime("%y%m%d_%H%M%S")
 short_name = f"reel_{unique_id}"
 
 # ==========================================
-# 2. DATA LOAD
+# 2. LOAD DATA (SEQUENTIAL ORDER)
 # ==========================================
 with open('quotes.json', 'r', encoding='utf-8') as f:
-    todays_quote = random.choice(json.load(f))
-    full_keyword = todays_quote['background_keyword']
+    quotes_list = json.load(f)
+
+# Set the start date (Year, Month, Day)
+start_date = datetime(2026, 2, 24) 
+days_passed = (datetime.now() - start_date).days
+
+# Calculate index (Loops back to 0 if it reaches the end of the list)
+index = days_passed % len(quotes_list)
+
+todays_quote = quotes_list[index]
+full_keyword = todays_quote['background_keyword']
+
+print(f"📄 Fetching Quote #{index + 1} from quotes.json")
 
 # ==========================================
 # 3. SECURE VIDEO FETCH (Filter by Duration)
