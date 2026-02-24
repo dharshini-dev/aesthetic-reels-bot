@@ -31,7 +31,7 @@ with open('quotes.json', 'r', encoding='utf-8') as f:
     full_keyword = todays_quote['background_keyword']
 
 # ==========================================
-# 3. DOWNLOAD VIDEO (PEXELS)
+# 3. DOWNLOADS (VIDEO & AUDIO)
 # ==========================================
 headers = {"Authorization": PEXELS_API_KEY}
 v_url = f"https://api.pexels.com/videos/search?query={full_keyword}&orientation=portrait&per_page=15"
@@ -42,57 +42,51 @@ raw_path = f"raw_footage/{short_name}.mp4"
 with open(raw_path, 'wb') as f:
     f.write(requests.get(video_link).content)
 
-# ==========================================
-# 4. DOWNLOAD STABLE TRENDING MUSIC
-# ==========================================
 music_path = f"temp_audio/{short_name}.mp3"
-# Using a more reliable, direct MP3 link for lofi vibe
 stable_audio_url = "https://www.bensound.com/bensound-music/bensound-dreams.mp3"
-
 try:
-    print(f"🎵 Downloading stable aesthetic audio...")
     r = requests.get(stable_audio_url, timeout=30)
-    if r.status_code == 200:
-        with open(music_path, 'wb') as f:
-            f.write(r.content)
-    else:
-        print("⚠️ Audio download failed, rendering without music.")
-except Exception as e:
-    print(f"⚠️ Audio error: {e}")
+    with open(music_path, 'wb') as f:
+        f.write(r.content)
+except: pass
 
 # ==========================================
-# 5. EDITING & RENDERING
+# 4. EDITING (VIDEO + TEXT FADES: 0.5s)
 # ==========================================
 duration = 8.0
 bg = VideoFileClip(raw_path).subclip(0, duration).resize(height=1920).crop(x_center=540, width=1080)
 overlay = ColorClip(size=(1080, 1920), color=(0,0,0)).set_opacity(0.75).set_duration(duration)
-final_bg = CompositeVideoClip([bg, overlay])
 
-font_p = "static/Montserrat-Regular.ttf"
-txt = TextClip(todays_quote['quote'], fontsize=40, color='white', font=font_p, method='caption', size=(850, None), align='West')
-txt = txt.set_start(1).set_duration(6).fadein(1).fadeout(1).set_position(('center', 800))
+# VIDEO FADE: Added 0.5s fade in and out to the background
+final_bg = CompositeVideoClip([bg, overlay]).fadein(0.5).fadeout(0.5)
 
-watermark = TextClip("@shiinnnnni", fontsize=22, color='#CCCCCC', font='Arial', method='caption', size=(800, None), align='center')
-watermark = watermark.set_duration(duration).set_position(('center', 200)).set_opacity(0.6)
+# FONT: Make sure your preferred minimal font is in the static folder!
+font_p = "static/Montserrat-Medium.ttf" 
 
+# TEXT: Reduced size to 32, 0.5s fade sync
+txt = TextClip(todays_quote['quote'], fontsize=32, color='white', font=font_p, method='caption', size=(800, None), align='West', interline=10)
+txt = txt.set_start(0.5).set_duration(7).fadein(0.5).fadeout(0.5).set_position(('center', 800))
+
+watermark = TextClip("@shiinnnnni", fontsize=20, color='#CCCCCC', font='Arial', method='caption', size=(800, None), align='center')
+watermark = watermark.set_duration(duration).set_position(('center', 200)).set_opacity(0.5)
+
+# Final Composition
 final_vid = CompositeVideoClip([final_bg, txt, watermark])
 
-# Safe Audio integration
-if os.path.exists(music_path) and os.path.getsize(music_path) > 1000:
+if os.path.exists(music_path):
     try:
         audio = AudioFileClip(music_path).set_duration(duration).audio_fadeout(0.5)
         final_vid = final_vid.set_audio(audio)
-    except Exception as e:
-        print(f"⚠️ MoviePy couldn't read audio: {e}")
+    except: pass
 
 out_path = f"final_reels/{short_name}.mp4"
 final_vid.write_videofile(out_path, fps=24, codec="libx264", audio_codec="aac")
 
 # ==========================================
-# 6. TELEGRAM SEND
+# 5. TELEGRAM SEND
 # ==========================================
 telegram_url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendVideo"
 payload = {'chat_id': CHAT_ID, 'caption': todays_quote['caption']}
 with open(out_path, 'rb') as video_file:
     requests.post(telegram_url, data=payload, files={'video': video_file})
-print("✅ Automated Reel Processed!")
+print("✅ Minimalist Reel Sent to @shiinnnnni")
