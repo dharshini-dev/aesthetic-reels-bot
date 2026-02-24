@@ -24,22 +24,24 @@ unique_id = datetime.now().strftime("%y%m%d_%H%M%S")
 short_name = f"reel_{unique_id}"
 
 # ==========================================
-# 2. LOAD DATA (SEQUENTIAL ORDER)
+# 2. LOAD DATA (12-HOUR SEQUENTIAL ORDER)
 # ==========================================
 with open('quotes.json', 'r', encoding='utf-8') as f:
     quotes_list = json.load(f)
 
-# Set the start date (Year, Month, Day)
+# Set the start date
 start_date = datetime(2026, 2, 24) 
-days_passed = (datetime.now() - start_date).days
 
-# Calculate index (Loops back to 0 if it reaches the end of the list)
-index = days_passed % len(quotes_list)
+# Calculate total hours passed
+hours_passed = int((datetime.now() - start_date).total_seconds() / 3600)
+
+# Change index every 12 hours (so you get 2 new quotes a day)
+index = (hours_passed // 12) % len(quotes_list)
 
 todays_quote = quotes_list[index]
 full_keyword = todays_quote['background_keyword']
 
-print(f"📄 Fetching Quote #{index + 1} from quotes.json")
+print(f"📄 Fetching Quote #{index + 1} from quotes.json (12-hour cycle)")
 
 # ==========================================
 # 3. SECURE VIDEO FETCH (Filter by Duration)

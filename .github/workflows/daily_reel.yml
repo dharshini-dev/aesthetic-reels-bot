@@ -1,9 +1,12 @@
 name: Daily Reel Generator
 
 on:
+  workflow_dispatch: 
   schedule:
-    - cron: '0 10 * * *' 
-  workflow_dispatch:
+    # Runs at 03:00 UTC (8:30 AM IST) - Video ready for 9 AM upload
+    - cron: '0 3 * * *'
+    # Runs at 12:00 UTC (5:30 PM IST) - Video ready for 6 PM upload
+    - cron: '0 12 * * *'
 
 jobs:
   build:
