@@ -15,7 +15,6 @@ else:
 PEXELS_API_KEY = os.environ.get('PEXELS_API_KEY')
 TELEGRAM_TOKEN = os.environ.get('TELEGRAM_TOKEN')
 CHAT_ID = os.environ.get('CHAT_ID')
-PIXABAY_API_KEY = "48995383-2d2f88325997a6f23f663189d"
 
 os.makedirs("raw_footage", exist_ok=True)
 os.makedirs("final_reels", exist_ok=True)
@@ -30,11 +29,9 @@ short_name = f"reel_{unique_id}"
 with open('quotes.json', 'r', encoding='utf-8') as f:
     todays_quote = random.choice(json.load(f))
     full_keyword = todays_quote['background_keyword']
-    # Simple keyword for music search to avoid API errors
-    music_search_keyword = full_keyword.split()[-1] 
 
 # ==========================================
-# 3. VIDEO (PEXELS)
+# 3. DOWNLOAD VIDEO (PEXELS)
 # ==========================================
 headers = {"Authorization": PEXELS_API_KEY}
 v_url = f"https://api.pexels.com/videos/search?query={full_keyword}&orientation=portrait&per_page=15"
@@ -46,30 +43,25 @@ with open(raw_path, 'wb') as f:
     f.write(requests.get(video_link).content)
 
 # ==========================================
-# 4. AUTO MUSIC (PIXABAY)
+# 4. DOWNLOAD STABLE TRENDING MUSIC
 # ==========================================
 music_path = f"temp_audio/{short_name}.mp3"
-backup_url = "https://www.chosic.com/wp-content/uploads/2021/07/Rainy-Day-Lofi-Chill-Background-Music.mp3"
+# Using a more reliable, direct MP3 link for lofi vibe
+stable_audio_url = "https://www.bensound.com/bensound-music/bensound-dreams.mp3"
 
 try:
-    print(f"🎵 Searching music for: {music_search_keyword}")
-    a_url = f"https://pixabay.com/api/audio/?key={PIXABAY_API_KEY}&q={music_search_keyword}&per_page=5"
-    response = requests.get(a_url)
-    a_res = response.json()
-
-    if a_res.get('hits'):
-        audio_link = random.choice(a_res['hits'])['audio']
+    print(f"🎵 Downloading stable aesthetic audio...")
+    r = requests.get(stable_audio_url, timeout=30)
+    if r.status_code == 200:
         with open(music_path, 'wb') as f:
-            f.write(requests.get(audio_link).content)
+            f.write(r.content)
     else:
-        raise Exception("No music hits")
+        print("⚠️ Audio download failed, rendering without music.")
 except Exception as e:
-    print(f"⚠️ Music API failed, using backup lofi. Error: {e}")
-    with open(music_path, 'wb') as f:
-        f.write(requests.get(backup_url).content)
+    print(f"⚠️ Audio error: {e}")
 
 # ==========================================
-# 5. EDITING
+# 5. EDITING & RENDERING
 # ==========================================
 duration = 8.0
 bg = VideoFileClip(raw_path).subclip(0, duration).resize(height=1920).crop(x_center=540, width=1080)
@@ -84,8 +76,14 @@ watermark = TextClip("@shiinnnnni", fontsize=22, color='#CCCCCC', font='Arial', 
 watermark = watermark.set_duration(duration).set_position(('center', 200)).set_opacity(0.6)
 
 final_vid = CompositeVideoClip([final_bg, txt, watermark])
-audio = AudioFileClip(music_path).set_duration(duration).audio_fadeout(0.5)
-final_vid = final_vid.set_audio(audio)
+
+# Safe Audio integration
+if os.path.exists(music_path) and os.path.getsize(music_path) > 1000:
+    try:
+        audio = AudioFileClip(music_path).set_duration(duration).audio_fadeout(0.5)
+        final_vid = final_vid.set_audio(audio)
+    except Exception as e:
+        print(f"⚠️ MoviePy couldn't read audio: {e}")
 
 out_path = f"final_reels/{short_name}.mp4"
 final_vid.write_videofile(out_path, fps=24, codec="libx264", audio_codec="aac")
@@ -97,4 +95,4 @@ telegram_url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendVideo"
 payload = {'chat_id': CHAT_ID, 'caption': todays_quote['caption']}
 with open(out_path, 'rb') as video_file:
     requests.post(telegram_url, data=payload, files={'video': video_file})
-print("✅ Automated Reel Sent successfully!")
+print("✅ Automated Reel Processed!")
