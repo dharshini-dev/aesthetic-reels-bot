@@ -68,12 +68,12 @@ try:
 except: pass
 
 # ==========================================
-# 4. DYNAMIC EDITING (Prevents Duration Error)
+# 4. VIRAL LOOP EDITING (5.5s Duration)
 # ==========================================
 raw_clip = VideoFileClip(raw_path)
 
-# Safety check: If video is somehow still < 8s, use its actual duration
-final_duration = min(8.0, raw_clip.duration - 0.5) 
+# Limit maximum duration to 5.5 seconds for the viral loop effect
+final_duration = min(5.5, raw_clip.duration - 0.5) 
 
 bg = raw_clip.subclip(0, final_duration).resize(height=1920).crop(x_center=540, width=1080)
 overlay = ColorClip(size=(1080, 1920), color=(0,0,0)).set_opacity(0.70).set_duration(final_duration)
@@ -82,7 +82,7 @@ final_bg = CompositeVideoClip([bg, overlay]).fadein(0.5).fadeout(0.5)
 
 font_p = "static/Montserrat-Medium.ttf" 
 
-# Text Timing adjusted to dynamic duration
+# Text stays for just enough time to read once, forcing a re-watch
 txt = TextClip(todays_quote['quote'], fontsize=35, color='white', font=font_p, method='caption', size=(850, None), align='West', interline=12)
 txt = txt.set_start(0.5).set_duration(final_duration - 1.0).fadein(0.5).fadeout(0.5).set_position(('center', 750))
 
