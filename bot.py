@@ -47,9 +47,9 @@ print(f"📄 Fetching Quote #{index + 1} from quotes.json (12-hour cycle)")
 # 3. SECURE VIDEO FETCH (Filter by Duration)
 # ==========================================
 headers = {"Authorization": PEXELS_API_KEY}
-search_query = f"{full_keyword} aesthetic nature minimalist lonely"
+search_query = f"{full_keyword} aesthetic minimalist"
 # Added &min_duration=10 to ensure we get longer videos
-v_url = f"https://api.pexels.com/videos/search?query={search_query}&orientation=portrait&per_page=15&min_duration=10"
+v_url = f"https://api.pexels.com/videos/search?query={search_query}&per_page=15&orientation=portrait"
 
 v_data = requests.get(v_url, headers=headers).json()['videos']
 selected_video = random.choice(v_data)
