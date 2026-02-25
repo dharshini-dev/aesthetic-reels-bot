@@ -63,53 +63,67 @@ with open("bg_video.mp4", "wb") as f:
     f.write(requests.get(video_url).content)
 print("✅ Cinematic nature video downloaded.")
 
-# ==========================================
-# 4. VIDEO EDITING & VFX (Darkening + Yellow Font)
-# ==========================================
-# Load video and trim to exactly 5.5 seconds (High retention loop duration)
-video = VideoFileClip("bg_video.mp4").subclip(0, 5.5)
+import os
+import json
+import random
+import requests
+from datetime import datetime
+from moviepy.editor import VideoFileClip, TextClip, CompositeVideoClip, AudioFileClip
+import moviepy.video.fx.all as vfx
 
-# VFX AUTO-DIM: Reduces video brightness by 50% so the Yellow font stands out on ANY video.
+# ... (Setup and JSON loading code remains the same) ...
+
+# ==========================================
+# 4. VIDEO EDITING (Optimized for Speed)
+# ==========================================
+# PERFORMANCE HACK: Resize to 720p to render 2x faster
+video = VideoFileClip("bg_video.mp4").subclip(0, 5.5).resize(height=720)
+
+# VFX AUTO-DIM: 50% darkness for yellow font visibility
 video = video.fx(vfx.colorx, 0.5)
 
-# TEXT SETTINGS: Yellow color + 3px Black Stroke (Makes it glow/pop perfectly)
-# Audio file irukka nu check pandrom
+# BUG FIX: Audio check logic inside the block
 if os.path.exists("bgm.mp3"):
     print("🎵 Adding background music...")
     audio = AudioFileClip("bgm.mp3").subclip(0, 5.5)
     video = video.set_audio(audio)
 else:
-    print("⚠️ bgm.mp3 not found! Sending video without audio.")
-    
+    print("⚠️ bgm.mp3 not found! Processing video without audio to avoid crash.")
+
+# TEXT SETTINGS (Center-aligned Left/Right Split)
 text_kwargs = {
     'fontsize': 50,
     'color': 'yellow',
     'stroke_color': 'black',
     'stroke_width': 3,
-    'font': 'Georgia', # Classy poetic font
+    'font': 'Georgia',
     'method': 'caption',
-    'size': (video.w * 0.4, None) # Each text block takes 40% of screen width
+    'size': (video.w * 0.4, None)
 }
 
-# Left Side Text
 txt_left = TextClip(left_text, align='West', **text_kwargs)
 txt_left = txt_left.set_position((video.w * 0.05, 'center')).set_duration(video.duration)
 
-# Right Side Text
 txt_right = TextClip(right_text, align='East', **text_kwargs)
 txt_right = txt_right.set_position((video.w * 0.55, 'center')).set_duration(video.duration)
 
-# Add Aesthetic BGM
-audio = AudioFileClip("bgm.mp3").subclip(0, 5.5)
-video = video.set_audio(audio)
-
-# Combine dark background with glowing text
+# ==========================================
+# 5. FAST RENDERING (Multi-threading)
+# ==========================================
 final_video = CompositeVideoClip([video, txt_left, txt_right])
-final_video.write_videofile("final_reel.mp4", fps=30, codec="libx264", audio_codec="aac")
 
-# ==========================================
-# 5. SEND TO TELEGRAM
-# ==========================================
+# PERFORMANCE HACK: Threads=4 and preset='ultrafast' for maximum speed
+final_video.write_videofile(
+    "final_reel.mp4", 
+    fps=24, 
+    codec="libx264", 
+    audio_codec="aac",
+    threads=4,
+    preset='ultrafast',
+    logger=None
+)
+
+# ... (Telegram sending code remains the same) ...
 telegram_url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendVideo"
 with open("final_reel.mp4", "rb") as vid:
     files = {'video': vid}
