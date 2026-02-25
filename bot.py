@@ -1,122 +1,111 @@
+import os
+import json
+import random
 import requests
-from moviepy.editor import *
-from moviepy.config import change_settings
-import json, random, os
 from datetime import datetime
+from moviepy.editor import VideoFileClip, TextClip, CompositeVideoClip, AudioFileClip
+import moviepy.video.fx.all as vfx # Video edit pandradhukkaana VFX module
 
 # ==========================================
-# 1. SETUP
+# 1. SETUP & SECRETS
 # ==========================================
-if os.environ.get('GITHUB_ACTIONS'):
-    pass 
-else:
-    change_settings({"IMAGEMAGICK_BINARY": r"E:\Program Files\ImageMagick-7.1.2-Q16-HDRI\magick.exe"})
-
-PEXELS_API_KEY = os.environ.get('PEXELS_API_KEY')
-TELEGRAM_TOKEN = os.environ.get('TELEGRAM_TOKEN')
-CHAT_ID = os.environ.get('CHAT_ID')
-
-os.makedirs("raw_footage", exist_ok=True)
-os.makedirs("final_reels", exist_ok=True)
-os.makedirs("temp_audio", exist_ok=True)
-
-unique_id = datetime.now().strftime("%y%m%d_%H%M%S")
-short_name = f"reel_{unique_id}"
+PEXELS_API_KEY = os.getenv('PEXELS_API_KEY')
+TELEGRAM_TOKEN = os.getenv('TELEGRAM_TOKEN')
+CHAT_ID = os.getenv('CHAT_ID')
 
 # ==========================================
-# 2. LOAD DATA (12-HOUR SEQUENTIAL ORDER)
+# 2. LOAD DATA & GET QUOTE
 # ==========================================
 with open('quotes.json', 'r', encoding='utf-8') as f:
     quotes_list = json.load(f)
 
-# Set the start date
-start_date = datetime(2026, 2, 24) 
-
-# Calculate total hours passed
+# Auto-rotating index based on time
+start_date = datetime(2026, 2, 24)
 hours_passed = int((datetime.now() - start_date).total_seconds() / 3600)
-
-# Change index every 12 hours (so you get 2 new quotes a day)
 index = (hours_passed // 12) % len(quotes_list)
 
 todays_quote = quotes_list[index]
-full_keyword = todays_quote['background_keyword']
+nature_keyword = todays_quote['background_keyword']
+quote_text = todays_quote['quote']
+caption = todays_quote['caption']
 
-print(f"📄 Fetching Quote #{index + 1} from quotes.json (12-hour cycle)")
+# SPLIT QUOTE LOGIC (Left & Right Split for High Retention)
+words = quote_text.split()
+mid_point = len(words) // 2
+left_text = " ".join(words[:mid_point])
+right_text = " ".join(words[mid_point:])
+
+print(f"🎬 Left Text: {left_text}")
+print(f"🎬 Right Text: {right_text}")
 
 # ==========================================
-# 3. SECURE VIDEO FETCH (Filter by Duration)
+# 3. PEXELS API FOR HIGH RETENTION
 # ==========================================
+# RETENTION HACK: Adding "calm cinematic slow" to API query forces it to fetch slow-moving aesthetic videos.
+# Landscape orientation creates the cinematic letterbox (black bars top & bottom) on Reels.
 headers = {"Authorization": PEXELS_API_KEY}
-search_query = f"{full_keyword} aesthetic minimalist"
-# Added &min_duration=10 to ensure we get longer videos
-v_url = f"https://api.pexels.com/videos/search?query={search_query}&per_page=15&orientation=portrait"
+search_query = f"{nature_keyword} calm cinematic slow"
+search_url = f"https://api.pexels.com/videos/search?query={search_query}&orientation=landscape&size=large&per_page=15"
 
-v_data = requests.get(v_url, headers=headers).json()['videos']
-selected_video = random.choice(v_data)
+response = requests.get(search_url, headers=headers)
+video_data = response.json()
 
-video_files = selected_video['video_files']
-video_link = sorted(video_files, key=lambda x: x['width'], reverse=True)[0]['link']
+if not video_data.get('videos'):
+    print("❌ No videos found. Falling back to default 'slow ocean waves'.")
+    fallback_url = "https://api.pexels.com/videos/search?query=calm dark ocean waves slow&orientation=landscape&size=large&per_page=5"
+    video_data = requests.get(fallback_url, headers=headers).json()
 
-raw_path = f"raw_footage/{short_name}.mp4"
-with open(raw_path, 'wb') as f:
-    f.write(requests.get(video_link).content)
+selected_video = random.choice(video_data['videos'])
+video_url = selected_video['video_files'][0]['link']
 
-# Audio
-music_path = f"temp_audio/{short_name}.mp3"
-stable_audio_url = "https://www.bensound.com/bensound-music/bensound-dreams.mp3"
-try:
-    r = requests.get(stable_audio_url, timeout=10)
-    with open(music_path, 'wb') as f: f.write(r.content)
-except: pass
+# Download video
+with open("bg_video.mp4", "wb") as f:
+    f.write(requests.get(video_url).content)
+print("✅ Cinematic nature video downloaded.")
 
 # ==========================================
-# 4. VIRAL LOOP EDITING (5.5s Duration)
+# 4. VIDEO EDITING & VFX (Darkening + Yellow Font)
 # ==========================================
-raw_clip = VideoFileClip(raw_path)
+# Load video and trim to exactly 5.5 seconds (High retention loop duration)
+video = VideoFileClip("bg_video.mp4").subclip(0, 5.5)
 
-final_duration = min(5.5, raw_clip.duration - 0.5) 
+# VFX AUTO-DIM: Reduces video brightness by 50% so the Yellow font stands out on ANY video.
+video = video.fx(vfx.colorx, 0.5)
 
-bg = raw_clip.subclip(0, final_duration).resize(height=1920).crop(x_center=540, width=1080)
-overlay = ColorClip(size=(1080, 1920), color=(0,0,0)).set_opacity(0.70).set_duration(final_duration)
+# TEXT SETTINGS: Yellow color + 3px Black Stroke (Makes it glow/pop perfectly)
+text_kwargs = {
+    'fontsize': 50,
+    'color': 'yellow',
+    'stroke_color': 'black',
+    'stroke_width': 3,
+    'font': 'Georgia', # Classy poetic font
+    'method': 'caption',
+    'size': (video.w * 0.4, None) # Each text block takes 40% of screen width
+}
 
-final_bg = CompositeVideoClip([bg, overlay]).fadein(0.5).fadeout(0.5)
+# Left Side Text
+txt_left = TextClip(left_text, align='West', **text_kwargs)
+txt_left = txt_left.set_position((video.w * 0.05, 'center')).set_duration(video.duration)
 
-font_p = "static/Montserrat-Medium.ttf" 
+# Right Side Text
+txt_right = TextClip(right_text, align='East', **text_kwargs)
+txt_right = txt_right.set_position((video.w * 0.55, 'center')).set_duration(video.duration)
 
-txt = TextClip(todays_quote['quote'], fontsize=35, color='white', font=font_p, method='caption', size=(850, None), align='West', interline=12)
-txt = txt.set_start(0.5).set_duration(final_duration - 1.0).fadein(0.5).fadeout(0.5).set_position(('center', 750))
+# Add Aesthetic BGM
+audio = AudioFileClip("bgm.mp3").subclip(0, 5.5)
+video = video.set_audio(audio)
 
-watermark = TextClip("@shiinnnnni", fontsize=22, color='#FFFFFF', font='Arial', method='caption', size=(800, None), align='center')
-watermark = watermark.set_duration(final_duration).set_position(('center', 250)).set_opacity(0.4)
-
-final_vid = CompositeVideoClip([final_bg, txt, watermark])
+# Combine dark background with glowing text
+final_video = CompositeVideoClip([video, txt_left, txt_right])
+final_video.write_videofile("final_reel.mp4", fps=30, codec="libx264", audio_codec="aac")
 
 # ==========================================
-# 🎵 SECURE LOCAL AUDIO INTEGRATION
+# 5. SEND TO TELEGRAM
 # ==========================================
-music_path = "bgm.mp3" # Make sure this file is uploaded to your GitHub repo!
-
-if os.path.exists(music_path):
-    print("🎵 Audio found! Syncing with video...")
-    try:
-        audio = AudioFileClip(music_path).set_duration(final_duration).audio_fadeout(0.5)
-        final_vid = final_vid.set_audio(audio)
-    except Exception as e:
-        print(f"⚠️ Error processing audio: {e}")
-else:
-    print("⚠️ bgm.mp3 is MISSING in your folder! Rendering silent video.")
-
-# ==========================================
-# 5. FAST RENDER & SEND
-# ====================================================================================
-# 5. FAST RENDER & SEND
-# ==========================================
-out_path = f"final_reels/{short_name}.mp4"
-final_vid.write_videofile(out_path, fps=24, codec="libx264", audio_codec="aac", preset='ultrafast', threads=4)
-
 telegram_url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendVideo"
-payload = {'chat_id': CHAT_ID, 'caption': todays_quote['caption']}
-with open(out_path, 'rb') as video_file:
-    requests.post(telegram_url, data=payload, files={'video': video_file})
+with open("final_reel.mp4", "rb") as vid:
+    files = {'video': vid}
+    data = {'chat_id': CHAT_ID, 'caption': caption}
+    requests.post(telegram_url, data=data, files=files)
 
-print(f"✅ HD Aesthetic Reel Sent! Final Duration: {final_duration}s")
+print("🚀 Cinematic Reel successfully delivered to Telegram!")
