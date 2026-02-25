@@ -3,8 +3,14 @@ import json
 import random
 import requests
 from datetime import datetime
+import PIL.Image
+if not hasattr(PIL.Image, 'ANTIALIAS'):
+    PIL.Image.ANTIALIAS = PIL.Image.LANCZOS
+
 from moviepy.editor import VideoFileClip, TextClip, CompositeVideoClip, AudioFileClip
 import moviepy.video.fx.all as vfx # Video edit pandradhukkaana VFX module
+
+
 
 # ==========================================
 # 1. SETUP & SECRETS
