@@ -2,9 +2,8 @@ import os
 import json
 import random
 import requests
-from datetime import datetime
 
-# 1. PIL ANTIALIAS VERSION FIX
+# 1. PIL ANTIALIAS VERSION FIX (To prevent errors)
 import PIL.Image
 if not hasattr(PIL.Image, 'ANTIALIAS'):
     PIL.Image.ANTIALIAS = PIL.Image.LANCZOS
@@ -34,7 +33,6 @@ caption = todays_quote['caption']
 # ==========================================
 # 4. TEXT FORMATTING (Split & 2-Line Wrap)
 # ==========================================
-# Remove '//' and split text
 if "//" in quote_text:
     parts = quote_text.split("//")
     left_part = parts[0].strip()
@@ -45,7 +43,6 @@ else:
     left_part = " ".join(words[:mid])
     right_part = " ".join(words[mid:])
 
-# Function to force text into 2 readable lines
 def make_two_lines(text):
     words = text.split()
     if len(words) <= 2:
@@ -57,17 +54,19 @@ left_text = make_two_lines(left_part)
 right_text = make_two_lines(right_part)
 
 # ==========================================
-# 5. PEXELS API (Peaceful Nature Visuals)
+# 5. PEXELS API (Blue/Green Mix & Camera Movement)
 # ==========================================
 headers = {"Authorization": PEXELS_API_KEY}
-search_query = f"{nature_keyword} peaceful calm nature daylight serene"
+# Added "blue green aesthetic" and "drone movement" to ensure perfect contrast for Yellow font
+search_query = f"{nature_keyword} blue green aesthetic nature drone movement"
 search_url = f"https://api.pexels.com/videos/search?query={search_query}&orientation=landscape&size=large&per_page=15"
 
 response = requests.get(search_url, headers=headers)
 video_data = response.json()
 
 if not video_data.get('videos'):
-    fallback_url = "https://api.pexels.com/videos/search?query=peaceful sunset calm nature&orientation=landscape&size=large&per_page=5"
+    # Fallback also uses blue/green vibes
+    fallback_url = "https://api.pexels.com/videos/search?query=blue ocean green forest drone&orientation=landscape&size=large&per_page=5"
     video_data = requests.get(fallback_url, headers=headers).json()
 
 selected_video = random.choice(video_data['videos'])
@@ -77,15 +76,15 @@ with open("bg_video.mp4", "wb") as f:
     f.write(requests.get(video_url).content)
 
 # ==========================================
-# 6. VIDEO PROCESSING & RENDERING
+# 6. VIDEO PROCESSING & ALIGNMENT
 # ==========================================
 # Resize and ensure even dimensions for Telegram playback
 video = VideoFileClip("bg_video.mp4").subclip(0, 5.5).resize(height=720) 
 w, h = video.size
 video = video.crop(x1=0, y1=0, x2=w - (w % 2), y2=h - (h % 2))
 
-# Subtle darkening for yellow text visibility
-video = video.fx(vfx.colorx, 0.7) 
+# Darken by 50%. This GUARANTEES the yellow font will look bright and never dull.
+video = video.fx(vfx.colorx, 0.5) 
 
 if os.path.exists("bgm.mp3"):
     try:
@@ -94,24 +93,26 @@ if os.path.exists("bgm.mp3"):
     except:
         pass
 
-# Trending Typewriter Aesthetic Text Settings
-text_kwargs = {
-    'fontsize': 30,             
+# Clean, Modern Font Settings
+base_text_settings = {
+    'fontsize': 32,             
     'color': 'yellow',           
-    'font': 'Courier-Bold', 
-    'align': 'center',
+    'font': 'Liberation-Sans-Bold', 
     'method': 'caption',
-    'size': (video.w * 0.4, None) # Width limit to avoid overlap
+    'size': (video.w * 0.4, None)
 }
 
-# Positioning with Instagram Safe Zone (Right 15% space left free)
-txt_left = TextClip(left_text, **text_kwargs)
+# Left side - Align Left (West) - Starts at 5% of screen
+txt_left = TextClip(left_text, align='West', **base_text_settings)
 txt_left = txt_left.set_position((video.w * 0.05, 'center')).set_duration(video.duration)
 
-txt_right = TextClip(right_text, **text_kwargs)
+# Right side - Align Right (East) - Starts at 45% of screen (Leaves right side free for Insta UI)
+txt_right = TextClip(right_text, align='East', **base_text_settings)
 txt_right = txt_right.set_position((video.w * 0.45, 'center')).set_duration(video.duration)
 
-# Combine and Export with High-Speed Settings
+# ==========================================
+# 7. EXPORT & SEND
+# ==========================================
 final_video = CompositeVideoClip([video, txt_left, txt_right])
 final_video.write_videofile(
     "final_reel.mp4", 
@@ -120,17 +121,14 @@ final_video.write_videofile(
     audio_codec="aac",
     threads=4,
     preset='fast', 
-    ffmpeg_params=['-pix_fmt', 'yuv420p'], # Essential for mobile/telegram playback
+    ffmpeg_params=['-pix_fmt', 'yuv420p'], # Essential for playback
     logger=None
 )
 
-# ==========================================
-# 7. TELEGRAM DELIVERY
-# ==========================================
 telegram_url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendVideo"
 with open("final_reel.mp4", "rb") as vid:
     files = {'video': vid}
     data = {'chat_id': CHAT_ID, 'caption': caption}
     requests.post(telegram_url, data=data, files=files)
 
-print("🚀 Cinematic Reel sent successfully!")
+print("🚀 Aesthetic Blue/Green Cinematic Reel sent successfully!")
