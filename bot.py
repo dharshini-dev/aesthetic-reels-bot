@@ -80,52 +80,54 @@ import moviepy.video.fx.all as vfx
 # ... (Setup and JSON loading code remains the same) ...
 
 # ==========================================
-# 4. VIDEO EDITING (Optimized for Speed)
+# 4. VIDEO EDITING (Aesthetic & Playable)
 # ==========================================
-# PERFORMANCE HACK: Resize to 720p to render 2x faster
-video = VideoFileClip("bg_video.mp4").subclip(0, 5.5).resize(height=720)
+# Resize height to 720
+video = VideoFileClip("bg_video.mp4").subclip(0, 5.5).resize(height=720) 
 
-# VFX AUTO-DIM: 50% darkness for yellow font visibility
+# CRUCIAL PLAYBACK FIX: Ensure width and height are even numbers (Telegram requirement)
+w, h = video.size
+video = video.crop(x1=0, y1=0, x2=w - (w % 2), y2=h - (h % 2))
+
+# Darken video by 50% so the pure White text stands out naturally (No ugly outlines!)
 video = video.fx(vfx.colorx, 0.5)
 
-# BUG FIX: Audio check logic inside the block
+# Safe Audio Check logic
 if os.path.exists("bgm.mp3"):
-    print("🎵 Adding background music...")
-    audio = AudioFileClip("bgm.mp3").subclip(0, 5.5)
-    video = video.set_audio(audio)
-else:
-    print("⚠️ bgm.mp3 not found! Processing video without audio to avoid crash.")
+    try:
+        audio = AudioFileClip("bgm.mp3").subclip(0, 5.5)
+        video = video.set_audio(audio)
+    except Exception as e:
+        print(f"⚠️ Audio error: {e}. Skipping audio.")
 
-# TEXT SETTINGS (Center-aligned Left/Right Split)
+# TEXT SETTINGS (Matching your aesthetic reference exactly!)
 text_kwargs = {
-    'fontsize': 50,
-    'color': 'yellow',
-    'stroke_color': 'black',
-    'stroke_width': 3,
-    'font': 'Georgia',
+    'fontsize': 38,             # Smaller, elegant size
+    'color': 'white',           # Pure white instead of yellow
+    'font': 'Liberation-Sans',  # Clean, modern font (Works perfect on GitHub Linux)
     'method': 'caption',
-    'size': (video.w * 0.4, None)
+    'size': (video.w * 0.45, None)
 }
 
 txt_left = TextClip(left_text, align='West', **text_kwargs)
 txt_left = txt_left.set_position((video.w * 0.05, 'center')).set_duration(video.duration)
 
 txt_right = TextClip(right_text, align='East', **text_kwargs)
-txt_right = txt_right.set_position((video.w * 0.55, 'center')).set_duration(video.duration)
+txt_right = txt_right.set_position((video.w * 0.50, 'center')).set_duration(video.duration)
 
 # ==========================================
-# 5. FAST RENDERING (Multi-threading)
+# 5. SUPER FAST & COMPATIBLE RENDERING
 # ==========================================
 final_video = CompositeVideoClip([video, txt_left, txt_right])
 
-# PERFORMANCE HACK: Threads=4 and preset='ultrafast' for maximum speed
 final_video.write_videofile(
     "final_reel.mp4", 
     fps=24, 
     codec="libx264", 
     audio_codec="aac",
     threads=4,
-    preset='ultrafast',
+    preset='fast', 
+    ffmpeg_params=['-pix_fmt', 'yuv420p'], # THIS LINE FIXES THE "CANNOT OPEN VIDEO" ERROR
     logger=None
 )
 
