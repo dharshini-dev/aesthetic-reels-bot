@@ -73,6 +73,14 @@ video = VideoFileClip("bg_video.mp4").subclip(0, 5.5)
 video = video.fx(vfx.colorx, 0.5)
 
 # TEXT SETTINGS: Yellow color + 3px Black Stroke (Makes it glow/pop perfectly)
+# Audio file irukka nu check pandrom
+if os.path.exists("bgm.mp3"):
+    print("🎵 Adding background music...")
+    audio = AudioFileClip("bgm.mp3").subclip(0, 5.5)
+    video = video.set_audio(audio)
+else:
+    print("⚠️ bgm.mp3 not found! Sending video without audio.")
+    
 text_kwargs = {
     'fontsize': 50,
     'color': 'yellow',
