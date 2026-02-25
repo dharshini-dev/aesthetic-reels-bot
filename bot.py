@@ -106,11 +106,11 @@ base_text_settings = {
 
 # Left side
 txt_left = TextClip(left_text, align='West', **base_text_settings)
-txt_left = txt_left.set_position((video.w * 0.18, 'center')).set_duration(video.duration)
+txt_left = txt_left.set_position((video.w * 0.20, 'center')).set_duration(video.duration)
 
 # Right side
 txt_right = TextClip(right_text, align='East', **base_text_settings)
-txt_right = txt_right.set_position((video.w * 0.35, 'center')).set_duration(video.duration)
+txt_right = txt_right.set_position((video.w * 0.30, 'center')).set_duration(video.duration)
 
 # ... (Export section remains the same)
 # ==========================================
