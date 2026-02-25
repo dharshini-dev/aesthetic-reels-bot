@@ -104,11 +104,11 @@ base_text_settings = {
 
 # Left side - Align Left (West) - Starts at 5% of screen
 txt_left = TextClip(left_text, align='West', **base_text_settings)
-txt_left = txt_left.set_position((video.w * 0.05, 'center')).set_duration(video.duration)
+txt_left = txt_left.set_position((video.w * 0.10, 'center')).set_duration(video.duration)
 
 # Right side - Align Right (East) - Starts at 45% of screen (Leaves right side free for Insta UI)
 txt_right = TextClip(right_text, align='East', **base_text_settings)
-txt_right = txt_right.set_position((video.w * 0.45, 'center')).set_duration(video.duration)
+txt_right = txt_right.set_position((video.w * 0.40, 'center')).set_duration(video.duration)
 
 # ==========================================
 # 7. EXPORT & SEND
