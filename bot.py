@@ -61,7 +61,7 @@ headers = {"Authorization": PEXELS_API_KEY}
 camera_movements = ["moving camera", "slow pan", "walking through", "cinematic glide", "handheld camera"]
 selected_movement = random.choice(camera_movements)
 
-search_query = f"{nature_keyword} {selected_movement}blue green aesthetic nature calm "
+search_query = f"{nature_keyword} {selected_movement}lush green vivid blue nature -snow -desert -sand "
 search_url = f"https://api.pexels.com/videos/search?query={search_query}&orientation=landscape&size=large&per_page=15"
 
 response = requests.get(search_url, headers=headers)
