@@ -2,9 +2,8 @@ import os
 import json
 import random
 import requests
-
-# 1. PIL ANTIALIAS VERSION FIX
 import PIL.Image
+
 if not hasattr(PIL.Image, 'ANTIALIAS'):
     PIL.Image.ANTIALIAS = PIL.Image.LANCZOS
 
@@ -12,15 +11,12 @@ from moviepy.editor import VideoFileClip, TextClip, CompositeVideoClip, AudioFil
 import moviepy.video.fx.all as vfx
 
 # ==========================================
-# 2. SETUP & SECRETS
+# SETUP
 # ==========================================
 PEXELS_API_KEY = os.getenv('PEXELS_API_KEY')
 TELEGRAM_TOKEN = os.getenv('TELEGRAM_TOKEN')
 CHAT_ID = os.getenv('CHAT_ID')
 
-# ==========================================
-# 3. LOAD DATA & RANDOM QUOTE SELECTION
-# ==========================================
 with open('quotes.json', 'r', encoding='utf-8') as f:
     quotes_list = json.load(f)
 
@@ -30,22 +26,19 @@ quote_text = todays_quote['quote']
 caption = todays_quote['caption']
 
 # ==========================================
-# 4. TEXT FORMATTING (Split & 2-Line Wrap)
+# TEXT WRAPPING
 # ==========================================
 if "//" in quote_text:
     parts = quote_text.split("//")
-    left_part = parts[0].strip()
-    right_part = parts[1].strip()
+    left_part, right_part = parts[0].strip(), parts[1].strip()
 else:
     words = quote_text.split()
     mid = len(words) // 2
-    left_part = " ".join(words[:mid])
-    right_part = " ".join(words[mid:])
+    left_part, right_part = " ".join(words[:mid]), " ".join(words[mid:])
 
 def make_two_lines(text):
     words = text.split()
-    if len(words) <= 2:
-        return text
+    if len(words) <= 2: return text
     mid = len(words) // 2
     return " ".join(words[:mid]) + "\n" + " ".join(words[mid:])
 
@@ -53,22 +46,20 @@ left_text = make_two_lines(left_part)
 right_text = make_two_lines(right_part)
 
 # ==========================================
-# 5. PEXELS API (Natural Camera Movements ONLY - NO DRONES)
+# PEXELS API (Lush Green & Deep Blue ONLY)
 # ==========================================
 headers = {"Authorization": PEXELS_API_KEY}
 
-# Drone-ai thookiyachu! Natural, human-like camera movements mattum dhaan.
-camera_movements = ["moving camera", "slow pan", "walking through", "cinematic glide", "handheld camera"]
-selected_movement = random.choice(camera_movements)
-
-search_query = f"{nature_keyword} {selected_movement}lush green vivid blue nature -snow -desert -sand "
+# Ippo search-la "vivid blue sky" and "lush green forest" highlight panni,
+# snow, desert, sand, brown, autumn-ellam thookiytom.
+search_query = f"{nature_keyword} lush green vivid blue nature -snow -desert -sand -brown -dry -autumn"
 search_url = f"https://api.pexels.com/videos/search?query={search_query}&orientation=landscape&size=large&per_page=15"
 
 response = requests.get(search_url, headers=headers)
 video_data = response.json()
 
 if not video_data.get('videos'):
-    fallback_url = "https://api.pexels.com/videos/search?query=lush green forest walking camera&orientation=landscape&size=large&per_page=5"
+    fallback_url = "https://api.pexels.com/videos/search?query=lush+green+forest+vivid+blue+ocean&orientation=landscape&size=large&per_page=5"
     video_data = requests.get(fallback_url, headers=headers).json()
 
 selected_video = random.choice(video_data['videos'])
@@ -78,30 +69,40 @@ with open("bg_video.mp4", "wb") as f:
     f.write(requests.get(video_url).content)
 
 # ==========================================
-# 6. VIDEO PROCESSING & ALIGNMENT
+# VIDEO PROCESSING (Landscape 16:9)
 # ==========================================
 video = VideoFileClip("bg_video.mp4").subclip(0, 5.5).resize(height=720) 
-w, h = video.size
-video = video.crop(x1=0, y1=0, x2=w - (w % 2), y2=h - (h % 2))
 
-# 60% Darkness set pandrom. 
-# Slim font use pannum podhu background dark ah irundha dhaan text 'Rich' ah theriyum.
-video = video.fx(vfx.colorx, 0.6) 
+# DARKNESS: 0.5 (50% darkness) - Idhu dhaan green background-la yellow text-ah highlight pannum.
+video = video.fx(vfx.colorx, 0.5) 
 
 if os.path.exists("bgm.mp3"):
     try:
         audio = AudioFileClip("bgm.mp3").subclip(0, 5.5)
         video = video.set_audio(audio)
-    except:
-        pass
+    except: pass
 
-# SLIM FONT SETTINGS
+# PREMIUM FONT SETTINGS
 base_text_settings = {
-    'fontsize': 30,              # Konjam perusu paduthinom (since it's slim)
-    'color': 'yellow',           
-    'font': 'Times-New-Roman',   # The Ultimate Classic Slim Font
+    'fontsize': 32,
+    'color': '#FFFF88', # Light Golden Yellow (Cinematic feel)
+    'font': 'Georgia-Italic', # Elegant and Thin
     'method': 'caption',
     'size': (video.w * 0.4, None) 
+}
+
+# Horizontal-la text space adhigham, so padding koraikalaam.
+txt_left = TextClip(left_text, align='West', **base_text_settings).set_duration(video.duration)
+txt_left = txt_left.set_position((video.w * 0.15, 'center'))
+
+txt_right = TextClip(right_text, align='East', **base_text_settings).set_duration(video.duration)
+txt_right = txt_right.set_position((video.w * 0.45, 'center'))
+
+# ==========================================
+# EXPORT
+# ==========================================
+final_video = CompositeVideoClip([video, txt_left, txt_right])
+final_video.write_videofile("final_reel.mp4", fps=24, codec="libx264", audio_codec="aac", logger=None)
 }
 
 # Left side
