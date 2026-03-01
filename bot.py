@@ -69,7 +69,7 @@ with open("bg_video.mp4", "wb") as f:
 # 4. VIDEO PROCESSING
 # ==========================================
 video = VideoFileClip("bg_video.mp4").subclip(0, 5.5).resize(height=720) 
-video = video.fx(vfx.colorx, 0.5) # Darker for cinematic look
+video = video.fx(vfx.colorx, 0.5) 
 
 if os.path.exists("bgm.mp3"):
     try:
@@ -80,20 +80,23 @@ if os.path.exists("bgm.mp3"):
 
 base_text_settings = {
     'fontsize': 32,
-    'color': '#FFFFE0', # Creamy Yellow
+    'color': '#FFFFE0', 
     'font': 'Georgia-Italic',
     'method': 'caption',
-    'size': (video.w * 0.4, None) 
+    'size': (video.w * 0.35, None) # Text box width-ah konjam kuraichutom
 }
 
+# Positioning mathiyachu:
+# Left text: Center-la irundhu konjam left-la (Gap kammi panniyaachu)
 txt_left = TextClip(left_text, align='West', **base_text_settings).set_duration(video.duration)
-txt_left = txt_left.set_position((video.w * 0.10, 'center'))
+txt_left = txt_left.set_position((video.w * 0.15, 'center'))
 
+# Right text: Center-la irundhu konjam right-la (Gap kammi panniyaachu)
 txt_right = TextClip(right_text, align='East', **base_text_settings).set_duration(video.duration)
 txt_right = txt_right.set_position((video.w * 0.50, 'center'))
 
 # ==========================================
-# 5. EXPORT & SEND (Cleaned up logic)
+# 5. EXPORT & SEND
 # ==========================================
 final_video = CompositeVideoClip([video, txt_left, txt_right])
 final_video.write_videofile("final_reel.mp4", fps=24, codec="libx264", audio_codec="aac", logger=None)
@@ -102,6 +105,9 @@ telegram_url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendVideo"
 with open("final_reel.mp4", "rb") as vid:
     files = {'video': vid}
     payload = {'chat_id': CHAT_ID, 'caption': caption}
+    requests.post(telegram_url, data=payload, files=files)
+
+print("🚀 Gap reduced! Green & Blue Horizontal Video sent.")
     requests.post(telegram_url, data=payload, files=files)
 
 print("🚀 Green & Blue Aesthetic Horizontal Video sent!")
